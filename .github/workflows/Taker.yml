@@ -19,32 +19,37 @@ jobs:
         latest_myxmy=$(curl -s https://triple.winboooc.workers.dev/api/myxmy)
         latest_mycmy=$(curl -s https://triple.winboooc.workers.dev/api/mycmy)
         latest_myhmy=$(curl -s https://triple.winboooc.workers.dev/api/myhmy)
+        latest_mysmy=$(curl -s https://triple.winboooc.workers.dev/api/mysmy)
 
         if [ -f README.md ]; then
           stored_myxmy=$(grep 'myxmy:' README.md | cut -d' ' -f2)
           stored_mycmy=$(grep 'mycmy:' README.md | cut -d' ' -f2)
           stored_myhmy=$(grep 'myhmy:' README.md | cut -d' ' -f2)
+          stored_mysmy=$(grep 'mysmy:' README.md | cut -d' ' -f2)
         else
           stored_myxmy=""
           stored_mycmy=""
           stored_myhmy=""
+          stored_mysmy=""
         fi
 
         echo "latest_myxmy=$latest_myxmy" >> $GITHUB_OUTPUT
         echo "latest_mycmy=$latest_mycmy" >> $GITHUB_OUTPUT
         echo "latest_myhmy=$latest_myhmy" >> $GITHUB_OUTPUT
+        echo "latest_mysmy=$latest_mysmy" >> $GITHUB_OUTPUT
 
         echo "update_myxmy=$([ "$latest_myxmy" != "$stored_myxmy" ] && echo true || echo false)" >> $GITHUB_OUTPUT
         echo "update_mycmy=$([ "$latest_mycmy" != "$stored_mycmy" ] && echo true || echo false)" >> $GITHUB_OUTPUT
         echo "update_myhmy=$([ "$latest_myhmy" != "$stored_myhmy" ] && echo true || echo false)" >> $GITHUB_OUTPUT
+        echo "update_mysmy=$([ "$latest_mysmy" != "$stored_mysmy" ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
-        if [ "$latest_myxmy" != "$stored_myxmy" ] || [ "$latest_mycmy" != "$stored_mycmy" ] || [ "$latest_myhmy" != "$stored_myhmy" ]; then
+        if [ "$latest_myxmy" != "$stored_myxmy" ] || [ "$latest_mycmy" != "$stored_mycmy" ] || [ "$latest_myhmy" != "$stored_myhmy" ] || [ "$latest_mysmy" != "$stored_mysmy" ]; then
           echo "update_needed=true" >> $GITHUB_OUTPUT
         else
           echo "update_needed=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Download and extract myxmy binaries
+    - name: Download and extract myxmy binaries (ZIP)
       if: steps.check_update.outputs.update_myxmy == 'true'
       run: |
         set -e
@@ -59,7 +64,7 @@ jobs:
           rm -rf "temp_${target}" "${target}.zip"
         done
 
-    - name: Download and extract mycmy binaries
+    - name: Download and extract mycmy binaries (Mixed)
       if: steps.check_update.outputs.update_mycmy == 'true'
       run: |
         set -e
@@ -74,7 +79,7 @@ jobs:
         chmod +x mycmy mycmy6 mycmymac6
         rm -rf temp_mycmymac6 mycmymac6.tgz
 
-    - name: Download myhmy binaries
+    - name: Download myhmy binaries (Direct)
       if: steps.check_update.outputs.update_myhmy == 'true'
       run: |
         set -e
@@ -82,6 +87,22 @@ jobs:
         curl -L -o myhmy6 https://triple.winboooc.workers.dev/bin/myhmy6
         curl -L -o myhmymac6 https://triple.winboooc.workers.dev/bin/myhmymac6
         chmod +x myhmy myhmy6 myhmymac6
+
+    - name: Download and extract mysmy binaries (TarGz)
+      if: steps.check_update.outputs.update_mysmy == 'true'
+      run: |
+        set -e
+        for suffix in "" "6" "mac6"; do
+          target="mysmy${suffix}"
+          curl -L -o "${target}.tar.gz" "https://triple.winboooc.workers.dev/bin/${target}"
+          mkdir -p "temp_${target}"
+          tar -xzf "${target}.tar.gz" -C "temp_${target}"
+          exe=$(find "temp_${target}" -type f -name "sing-box" | head -n 1)
+          if [ -z "$exe" ]; then exit 1; fi
+          mv "$exe" "$target"
+          chmod +x "$target"
+          rm -rf "temp_${target}" "${target}.tar.gz"
+        done
 
     - name: Install GitHub CLI
       if: steps.check_update.outputs.update_needed == 'true'
@@ -115,6 +136,12 @@ jobs:
           [ -f myhmymac6 ] && assets="$assets myhmymac6"
         fi
 
+        if [ "${{ steps.check_update.outputs.update_mysmy }}" == "true" ]; then
+          [ -f mysmy ] && assets="$assets mysmy"
+          [ -f mysmy6 ] && assets="$assets mysmy6"
+          [ -f mysmymac6 ] && assets="$assets mysmymac6"
+        fi
+
         if [ -z "$assets" ]; then
           echo "No updated binaries to upload"
           exit 0
@@ -139,6 +166,7 @@ jobs:
         echo "myxmy: ${{ steps.check_update.outputs.latest_myxmy }}  " > README.md
         echo "mycmy: ${{ steps.check_update.outputs.latest_mycmy }}  " >> README.md
         echo "myhmy: ${{ steps.check_update.outputs.latest_myhmy }}  " >> README.md
+        echo "mysmy: ${{ steps.check_update.outputs.latest_mysmy }}  " >> README.md
 
         git add README.md
         git commit -m "Update versions" || echo "No changes"
