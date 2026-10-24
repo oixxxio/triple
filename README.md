@@ -1,4 +1,4 @@
 myxmy: v26.10.21  
 mycmy: 2026.10.3  
 myhmy: app/v2.13.0  
-mysmy: 1.14.3  
+mysmy: 1.14.4  
